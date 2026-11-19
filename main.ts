@@ -12,7 +12,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
@@ -40,5 +40,11 @@ writeFileSync(
   }),
 );
 
-// Say what was handed in, so a local run shows the entry's shape at a glance.
-console.log(`Vice Poster handed in: app/ copied to ${join(out, 'app')}, screenshots and dossier.json written to ${out}.`);
+// Say what was handed in, so a local run shows the entry's shape at a glance:
+// the screenshots and the dossier's own counts.
+const dossier = JSON.parse(readFileSync(join(out, 'dossier.json'), 'utf8'));
+const shotNames = existsSync(join(out, 'screenshots')) ? readdirSync(join(out, 'screenshots')).sort() : [];
+console.log(
+  `Vice Poster handed in: ${dossier.images.length} screenshots (${shotNames.join(', ')}), ` +
+  `${dossier.text.length} dossier text bytes, written to ${out}.`,
+);
