@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vice Poster — GTA-style cover art maker</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">VICE POSTER</div>
+  <p class="tagline">Your photos, turned into bold multi-panel cover art — sunset grade, poster lettering, ready to post. Photos never leave your machine.</p>
+</header>
+<main class="app">
+  <aside class="controls">
+    <section class="step" id="step-photos">
+      <h2><span class="step-no">1</span> Photos</h2>
+      <label class="file-pick">Add your photos
+        <input id="photo-file" type="file" accept="image/*" multiple>
+      </label>
+      <p class="or">or start with a sample:</p>
+      <div id="sample-row" class="chip-row"></div>
+      <div id="tray" class="tray" aria-label="Your photos"></div>
+      <p class="hint">Click a photo, then it lands in the selected panel. Drag a photo inside its panel to position it; scroll to zoom.</p>
+    </section>
+
+    <section class="step" id="step-layout">
+      <h2><span class="step-no">2</span> Layout &amp; grade</h2>
+      <div class="radio-cards" role="radiogroup" aria-label="Panel layout">
+        <label><input type="radio" name="layout" value="vice-grid" checked> Vice Grid</label>
+        <label><input type="radio" name="layout" value="hero-strip"> Hero Strip</label>
+        <label><input type="radio" name="layout" value="nine-patch"> Nine Patch</label>
+      </div>
+      <div class="radio-cards grades" role="radiogroup" aria-label="Colour grade">
+        <label><input type="radio" name="grade" value="sunset" checked> Sunset</label>
+        <label><input type="radio" name="grade" value="neon"> Neon</label>
+        <label><input type="radio" name="grade" value="dusk"> Dusk</label>
+        <label><input type="radio" name="grade" value="gold"> Gold Hour</label>
+      </div>
+      <label class="slider">Grade strength
+        <input id="intensity" type="range" min="0" max="1" step="0.05" value="0.85">
+      </label>
+    </section>
+
+    <section class="step" id="step-caption">
+      <h2><span class="step-no">3</span> Caption</h2>
+      <label>Title
+        <input id="title-input" type="text" maxlength="26" value="NEON HARBOR">
+      </label>
+      <label>Subtitle
+        <input id="subtitle-input" type="text" maxlength="34" value="ONE LAST SCORE">
+      </label>
+    </section>
+
+    <section class="step" id="step-panel">
+      <h2>Panel tools</h2>
+      <p id="selected-label" class="hint">Panel 1</p>
+      <label class="slider">Zoom in panel
+        <input id="zoom" type="range" min="1" max="4" step="0.05" value="1">
+      </label>
+      <div class="button-row">
+        <button id="fill-all" type="button">Fill all panels</button>
+        <button id="auto-fill" type="button">Spread photos</button>
+        <button id="clear-panel" type="button">Clear panel</button>
+      </div>
+    </section>
+
+    <section class="step" id="step-export">
+      <h2><span class="step-no">4</span> Size &amp; export</h2>
+      <div class="radio-cards" role="radiogroup" aria-label="Post size">
+        <label><input type="radio" name="size" value="square" checked> 1080 × 1080</label>
+        <label><input type="radio" name="size" value="portrait"> 1080 × 1350</label>
+        <label><input type="radio" name="size" value="wide"> 1920 × 1080</label>
+      </div>
+      <button id="export-btn" type="button" class="export">Export PNG</button>
+      <p id="status" role="status"></p>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <canvas id="cover" width="1080" height="1080" aria-label="Your cover, live preview"></canvas>
+    <p class="stage-hint">Live preview at full export size — what you see is the PNG you get.</p>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
