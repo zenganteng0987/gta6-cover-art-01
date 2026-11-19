@@ -1,6 +1,7 @@
-/* Vice Poster: a dark editor with a sunset-to-neon accent, so the cover on the stage is the
-   brightest thing on the page. The display font is bundled (SIL OFL, see fonts/OFL.txt) and used
-   for the brand and, on the canvas, for the cover lettering itself. */
+/* Vice Poster: a dark editor with a sunset-to-neon accent, so the cover on the
+   stage is the brightest thing on the page. The display font is bundled
+   (SIL OFL, see fonts/OFL.txt) and used for the brand and, on the canvas,
+   for the cover lettering itself. */
 @font-face {
   font-family: "Cover Sans";
   src: url("./fonts/LiberationSans-Bold.ttf") format("truetype");
