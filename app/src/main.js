@@ -1,8 +1,10 @@
-// Vice Poster: the editor. A person's photos (read on their own machine, never uploaded) fill the
-// panels of a poster layout; each photo can be dragged and zoomed inside its panel; the caption,
-// the layout, the colour grade and the post size are picked beside a live canvas preview, and one
-// button exports the PNG. The canvas is always rendered at the export size, so the preview is the
-// export. A `?shot=` query instead sets up a fixed scene for the maker's screenshots (./shots.js).
+// Vice Poster: the editor. A person's photos (read on their own machine, never
+// uploaded) fill the panels of a poster layout; each photo can be dragged and
+// zoomed inside its panel; the caption, the layout, the colour grade and the
+// post size are picked beside a live canvas preview, and one button exports the
+// PNG. The canvas is always painted at the export size, so the preview is the
+// export. A `?shot=` query instead sets up a fixed scene for the maker's
+// screenshots (./shots.js).
 import { drawCover, GRADES, gradeById } from './cover.js';
 import { LAYOUTS, SIZES, aspectClass, layoutById } from './layouts.js';
 import { runShot } from './shots.js';
@@ -36,6 +38,8 @@ const state = {
   lastRects: [],
 };
 
+const clamp = (value, lo, hi) => Math.min(hi, Math.max(lo, value));
+
 /** The slots for the current layout and canvas shape, created empty on first use. */
 function currentSlots() {
   const size = SIZES[state.sizeKey];
@@ -47,7 +51,7 @@ function currentSlots() {
   return state.slotsByKey.get(key);
 }
 
-/** Renders the cover at the export size and remembers the panel rectangles for pointer work. */
+/** Paints the cover at the export size and remembers the panel rects for pointer work. */
 export function redraw() {
   const size = SIZES[state.sizeKey];
   canvas.width = size.w;
@@ -87,13 +91,13 @@ export function loadImage(url) {
 export function addPhoto(img, label, fill = false) {
   state.photos.push({ img, label });
   renderTray();
-  if (fill) autoFill();
+  if (fill) spreadPhotos();
   redraw();
   return state.photos.length - 1;
 }
 
 /** Gives each panel the next photo in turn, wrapping around: one photo fills every panel alike. */
-export function autoFill() {
+export function spreadPhotos() {
   if (state.photos.length === 0) return;
   currentSlots().forEach((slot, index) => {
     slot.photo = index % state.photos.length;
@@ -147,7 +151,7 @@ export function exportPng() {
   }, 'image/png');
 }
 
-/** Renders a size off-screen of the editor's flow and returns its PNG data URL (used by shots). */
+/** Paints a size off-screen of the editor's flow and returns its PNG data URL (used by shots). */
 export function exportDataURL(sizeKey) {
   const keep = state.sizeKey;
   state.sizeKey = sizeKey;
@@ -174,7 +178,7 @@ export async function applyScene(scene) {
       state.photos.push({ img, label: sample.label });
     }
     renderTray();
-    autoFill();
+    spreadPhotos();
   }
   syncControls();
   redraw();
@@ -199,7 +203,7 @@ function wireControls() {
     if (state.photos.length > 0) slots.forEach((slot) => { slot.photo = Math.max(0, photo); });
     redraw();
   });
-  document.getElementById('auto-fill').addEventListener('click', () => { autoFill(); redraw(); });
+  document.getElementById('auto-fill').addEventListener('click', () => { spreadPhotos(); redraw(); });
   document.getElementById('clear-panel').addEventListener('click', () => {
     const slot = currentSlots()[state.selected];
     if (slot) { slot.photo = -1; slot.dx = 0; slot.dy = 0; slot.zoom = 1; }
@@ -284,10 +288,6 @@ function wireCanvas() {
   }, { passive: false });
 }
 
-function clamp(value, lo, hi) {
-  return Math.min(hi, Math.max(lo, value));
-}
-
 async function start() {
   wireControls();
   wireCanvas();
@@ -310,7 +310,7 @@ async function start() {
     state.photos.push({ img, label: sample.label });
   }
   renderTray();
-  autoFill();
+  spreadPhotos();
   syncControls();
   redraw();
 }

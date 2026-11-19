@@ -1,20 +1,32 @@
-// Panel layouts and export sizes for the poster. A layout is a set of rectangles in fractions of the
-// canvas (x, y, w, h from the top-left), one set per aspect class, plus the height of the title's
-// centre line as a fraction of the canvas height, so the lettering sits on a panel seam like a
-// printed poster. Rects leave the gutters and the outer frame to the renderer.
+// Panel layouts and export sizes for Vice Poster. A layout is a set of panel
+// rectangles as fractions of the canvas (x, y, w, h measured from the top-left
+// corner), one set per aspect class, plus the title's centre line as a fraction
+// of the canvas height, so the lettering sits across a panel seam the way a
+// printed poster does. The renderer adds the frame margin and gutters.
 
-/** The three post sizes the app exports, as canvas pixel dimensions. */
+/** The three post sizes the app exports, in canvas pixels. */
 export const SIZES = {
   square: { w: 1080, h: 1080, label: 'Square · 1080 × 1080' },
   portrait: { w: 1080, h: 1350, label: 'Portrait · 1080 × 1350' },
   wide: { w: 1920, h: 1080, label: 'Wide · 1920 × 1080' },
 };
 
-/** Which shape a canvas is: 'wide', 'portrait' or 'square'. */
+/** The shape class of a canvas: 'wide', 'portrait' or 'square'. */
 export function aspectClass(w, h) {
   if (w > h) return 'wide';
   if (h > w) return 'portrait';
   return 'square';
+}
+
+/** A plain 3 x 3 grid of equal panels. */
+function ninePatch() {
+  const cells = [];
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 3; col += 1) {
+      cells.push([col / 3, row / 3, 1 / 3, 1 / 3]);
+    }
+  }
+  return cells;
 }
 
 export const LAYOUTS = [
@@ -74,23 +86,12 @@ export const LAYOUTS = [
   },
 ];
 
-/** A plain 3 × 3 grid of panels. */
-function ninePatch() {
-  const cells = [];
-  for (let row = 0; row < 3; row += 1) {
-    for (let col = 0; col < 3; col += 1) {
-      cells.push([col / 3, row / 3, 1 / 3, 1 / 3]);
-    }
-  }
-  return cells;
-}
-
 /** The layout object for an id (the first layout when the id is unknown). */
 export function layoutById(id) {
   return LAYOUTS.find((layout) => layout.id === id) ?? LAYOUTS[0];
 }
 
-/** A layout's panel rectangles in pixels for a canvas of w × h, inside the frame margin. */
+/** A layout's panel rectangles in pixels for a canvas of w x h, inside the frame. */
 export function panelRects(layout, w, h, margin, gap) {
   const innerW = w - margin * 2;
   const innerH = h - margin * 2;

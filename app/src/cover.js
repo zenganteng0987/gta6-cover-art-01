@@ -1,10 +1,12 @@
-// Draws the cover: a multi-panel poster of graded photos (or drawn placeholder scenes where a panel
-// has no photo yet), white gutters and frame in the printed-poster manner, and the caption set as
-// bold condensed lettering with a ribbon for the subtitle. Everything is drawn on a 2D canvas at the
-// export size, so the preview the editor shows is the PNG the app exports, pixel for pixel.
+// Paints the cover: graded photos (or a drawn sunset scene where a panel is
+// still empty) inside white gutters and a cream frame, in the manner of a
+// printed poster, with the caption set in heavy condensed lettering, a ribbon
+// for the subtitle and a star badge in the corner. Everything is drawn on a
+// 2D canvas at the export size, so the editor preview is the exported PNG,
+// pixel for pixel.
 import { aspectClass, panelRects } from './layouts.js';
 
-/** The colour grades. `filter` restyles the photo itself; `wash` lays two colours over it. */
+/** The colour grades. `filter` restyles the photo; `wash` is laid over it. */
 export const GRADES = [
   {
     id: 'sunset', name: 'Sunset',
@@ -40,20 +42,20 @@ export function gradeById(id) {
 const FRAME = '#f7f1e6';
 const INK = '#17040f';
 
-/** A small deterministic random source, so a cover renders the same bytes every time. */
+/** A small deterministic random source, so a cover paints the same every time. */
 function seededRandom(seed) {
-  let state = seed * 2654435761 % 4294967296;
+  let state = (seed * 2654435761) % 4294967296;
   return () => {
     state = (state * 1664525 + 1013904223) % 4294967296;
     return state / 4294967296;
   };
 }
 
-let grainPattern = null;
+let grainTile = null;
 
 /** A tileable noise pattern for the print grain, built once from a fixed seed. */
-function getGrainPattern(ctx) {
-  if (grainPattern) return grainPattern;
+function grainPattern(ctx) {
+  if (grainTile) return grainTile;
   const tile = document.createElement('canvas');
   tile.width = 240;
   tile.height = 240;
@@ -68,14 +70,16 @@ function getGrainPattern(ctx) {
     image.data[i + 3] = 255;
   }
   tctx.putImageData(image, 0, 0);
-  grainPattern = ctx.createPattern(tile, 'repeat');
-  return grainPattern;
+  grainTile = ctx.createPattern(tile, 'repeat');
+  return grainTile;
 }
 
 /**
- * Draws the whole cover onto ctx. `view` carries the canvas size, the layout and grade objects, the
- * grade intensity (0..1), one slot per panel ({ img, dx, dy, zoom } — img null for an empty panel),
- * the title and subtitle, and the selected panel index (-1 for none, drawn only for the editor).
+ * Paints the whole cover onto ctx. `view` carries the canvas size, the layout
+ * and grade objects, the grade strength (0..1), one slot per panel
+ * ({ img, dx, dy, zoom } — img null for an empty panel), the title and
+ * subtitle, and the selected panel index (-1 for none, shown only in the
+ * editor). Returns the panel rectangles in pixels.
  */
 export function drawCover(ctx, view) {
   const { w, h } = view;
@@ -88,7 +92,7 @@ export function drawCover(ctx, view) {
 
   rects.forEach((rect, index) => {
     const slot = view.panels[index] ?? { img: null, dx: 0, dy: 0, zoom: 1 };
-    drawPanel(ctx, rect, slot, view.grade, view.intensity, index);
+    paintPanel(ctx, rect, slot, view.grade, view.intensity, index);
     if (index === view.selected) {
       ctx.strokeStyle = '#ff2e88';
       ctx.lineWidth = Math.max(4, Math.min(w, h) * 0.006);
@@ -96,9 +100,9 @@ export function drawCover(ctx, view) {
     }
   });
 
-  drawLettering(ctx, view, margin);
-  drawStarBadge(ctx, w - margin * 2.1, margin * 2.1, Math.min(w, h) * 0.042);
-  drawVignetteAndGrain(ctx, w, h);
+  paintTitle(ctx, view);
+  paintBadge(ctx, w - margin * 2.1, margin * 2.1, Math.min(w, h) * 0.042);
+  finishCover(ctx, w, h);
 
   ctx.strokeStyle = INK;
   ctx.lineWidth = Math.max(2, Math.min(w, h) * 0.003);
@@ -106,19 +110,16 @@ export function drawCover(ctx, view) {
   return rects;
 }
 
-/** One panel: the photo (or a drawn scene) clipped to the rect, graded, with a print inner shadow. */
-function drawPanel(ctx, rect, slot, grade, intensity, index) {
+/** One panel: the photo (or a drawn scene) clipped to the rect, graded, shaded. */
+function paintPanel(ctx, rect, slot, grade, intensity, index) {
   ctx.save();
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.w, rect.h);
   ctx.clip();
-  if (slot.img) {
-    drawPanelPhoto(ctx, rect, slot, grade);
-  } else {
-    drawPlaceholderScene(ctx, rect, grade, index);
-  }
-  applyGradeWash(ctx, rect, grade, intensity, index);
-  // A soft shade along the foot of each panel, so the lettering band reads over any photo.
+  if (slot.img) paintPhoto(ctx, rect, slot, grade);
+  else paintEmptyScene(ctx, rect, grade, index);
+  washGrade(ctx, rect, grade, intensity, index);
+  // A soft shade along the foot of each panel, so the lettering reads over any photo.
   const shade = ctx.createLinearGradient(0, rect.y + rect.h * 0.62, 0, rect.y + rect.h);
   shade.addColorStop(0, 'rgba(12, 0, 14, 0)');
   shade.addColorStop(1, 'rgba(12, 0, 14, 0.30)');
@@ -130,8 +131,8 @@ function drawPanel(ctx, rect, slot, grade, intensity, index) {
   ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
 }
 
-/** The photo cover-fitted into the panel, positioned by the slot's pan (dx, dy in -1..1) and zoom. */
-function drawPanelPhoto(ctx, rect, slot, grade) {
+/** The photo cover-fitted into the panel, placed by the slot's pan and zoom. */
+function paintPhoto(ctx, rect, slot, grade) {
   const img = slot.img;
   const base = Math.max(rect.w / img.naturalWidth, rect.h / img.naturalHeight);
   const scale = base * (slot.zoom || 1);
@@ -145,8 +146,8 @@ function drawPanelPhoto(ctx, rect, slot, grade) {
   ctx.restore();
 }
 
-/** The grade's two colours washed over the panel; odd panels lean on the second colour. */
-function applyGradeWash(ctx, rect, grade, intensity, index) {
+/** The grade's two colours washed over the panel; odd panels lean on the second. */
+function washGrade(ctx, rect, grade, intensity, index) {
   if (intensity <= 0) return;
   const [first, second] = index % 2 === 0 ? grade.wash : [grade.wash[1], grade.wash[0]];
   const wash = ctx.createLinearGradient(0, rect.y, 0, rect.y + rect.h);
@@ -164,10 +165,11 @@ function applyGradeWash(ctx, rect, grade, intensity, index) {
 }
 
 /**
- * A drawn scene for a panel with no photo: the grade's sky, a low sun, a skyline and palm
- * silhouettes over a sea band — varied by panel index, so an empty cover still reads as a poster.
+ * A drawn scene for a panel with no photo yet: the grade's sky, a low sun, a
+ * skyline and palm silhouettes over a sea band — varied by panel index, so an
+ * empty cover still reads as a poster.
  */
-function drawPlaceholderScene(ctx, rect, grade, index) {
+function paintEmptyScene(ctx, rect, grade, index) {
   const random = seededRandom(index * 7 + 3);
   const sky = ctx.createLinearGradient(0, rect.y, 0, rect.y + rect.h);
   sky.addColorStop(0, grade.sky[0]);
@@ -194,12 +196,12 @@ function drawPlaceholderScene(ctx, rect, grade, index) {
     ctx.fillRect(bx, horizon - bh, bw, bh);
     bx += bw + rect.w * 0.015;
   }
-  drawPalmSilhouette(ctx, rect.x + rect.w * 0.10, rect.y + rect.h, rect.h * 0.52);
-  drawPalmSilhouette(ctx, rect.x + rect.w * 0.94, rect.y + rect.h, rect.h * 0.42);
+  paintPalm(ctx, rect.x + rect.w * 0.10, rect.y + rect.h, rect.h * 0.52);
+  paintPalm(ctx, rect.x + rect.w * 0.94, rect.y + rect.h, rect.h * 0.42);
 }
 
-/** A palm silhouette: a curved trunk path with drooping fronds, drawn in the panel's corner. */
-function drawPalmSilhouette(ctx, baseX, baseY, size) {
+/** A palm silhouette: a curved trunk with drooping fronds, in a panel's corner. */
+function paintPalm(ctx, baseX, baseY, size) {
   ctx.save();
   ctx.strokeStyle = 'rgba(10, 4, 18, 0.95)';
   ctx.lineCap = 'round';
@@ -223,8 +225,8 @@ function drawPalmSilhouette(ctx, baseX, baseY, size) {
   ctx.restore();
 }
 
-/** The caption: the title in heavy condensed capitals with an ink outline, the subtitle on a ribbon. */
-function drawLettering(ctx, view, margin) {
+/** The caption: the title in heavy condensed capitals with an ink outline. */
+function paintTitle(ctx, view) {
   const { w, h } = view;
   const title = (view.title || '').trim().toUpperCase();
   const subtitle = (view.subtitle || '').trim().toUpperCase();
@@ -236,11 +238,11 @@ function drawLettering(ctx, view, margin) {
   if (title) {
     let size = Math.min(h * 0.175, w * 0.2);
     try { ctx.letterSpacing = '0px'; } catch { /* not supported everywhere */ }
-    const fitTitle = () => {
+    const fitWidth = () => {
       ctx.font = `700 ${size}px "Cover Sans", sans-serif`;
       return ctx.measureText(title).width * 0.84;
     };
-    while (fitTitle() > w * 0.88 && size > 14) size *= 0.94;
+    while (fitWidth() > w * 0.88 && size > 14) size *= 0.94;
     // A soft dark bloom behind the words, so they hold over bright panels.
     const bloom = ctx.createRadialGradient(w / 2, centreY, size * 0.2, w / 2, centreY, w * 0.52);
     bloom.addColorStop(0, 'rgba(14, 0, 12, 0.42)');
@@ -268,16 +270,15 @@ function drawLettering(ctx, view, margin) {
     ctx.fillText(title, 0, 0);
     ctx.restore();
 
-    if (subtitle) drawSubtitleRibbon(ctx, subtitle, w / 2, centreY + size * 0.78, size * 0.30);
+    if (subtitle) paintRibbon(ctx, subtitle, w / 2, centreY + size * 0.78, size * 0.30);
   } else if (subtitle) {
-    drawSubtitleRibbon(ctx, subtitle, w / 2, centreY, Math.min(h * 0.05, w * 0.06));
+    paintRibbon(ctx, subtitle, w / 2, centreY, Math.min(h * 0.05, w * 0.06));
   }
   ctx.restore();
-  void margin;
 }
 
-/** The subtitle set in white capitals on a slanted sunset-gradient ribbon. */
-function drawSubtitleRibbon(ctx, text, cx, cy, size) {
+/** The subtitle in white capitals on a slanted sunset-gradient ribbon. */
+function paintRibbon(ctx, text, cx, cy, size) {
   ctx.save();
   ctx.font = `700 ${size}px "Cover Sans", sans-serif`;
   try { ctx.letterSpacing = `${Math.round(size * 0.22)}px`; } catch { /* older engines: no spacing */ }
@@ -311,7 +312,7 @@ function drawSubtitleRibbon(ctx, text, cx, cy, size) {
 }
 
 /** A gold star in a dark-ringed disc, the poster's corner badge. */
-function drawStarBadge(ctx, cx, cy, r) {
+function paintBadge(ctx, cx, cy, r) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -335,7 +336,7 @@ function drawStarBadge(ctx, cx, cy, r) {
 }
 
 /** A gentle vignette and the print grain over the finished cover. */
-function drawVignetteAndGrain(ctx, w, h) {
+function finishCover(ctx, w, h) {
   const vignette = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.42, w / 2, h / 2, Math.max(w, h) * 0.78);
   vignette.addColorStop(0, 'rgba(16, 0, 14, 0)');
   vignette.addColorStop(1, 'rgba(16, 0, 14, 0.30)');
@@ -344,7 +345,7 @@ function drawVignetteAndGrain(ctx, w, h) {
   ctx.save();
   ctx.globalCompositeOperation = 'overlay';
   ctx.globalAlpha = 0.055;
-  ctx.fillStyle = getGrainPattern(ctx);
+  ctx.fillStyle = grainPattern(ctx);
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 }
