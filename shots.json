@@ -1,1 +1,5 @@
-[{"h":1080,"name":"1-cover.jpg","query":"?shot=cover&photos=harbor,cruiser,rooftop,pier,boulevard&title=NEON%20HARBOR&sub=ONE%20LAST%20SCORE&size=wide&layout=vice-grid&grade=sunset","w":1920},{"h":720,"name":"2-editor.jpg","query":"?shot=editor&photos=harbor,cruiser,rooftop,pier,boulevard&title=NEON%20HARBOR&sub=ONE%20LAST%20SCORE&size=square&layout=vice-grid&grade=sunset","w":1280},{"h":1350,"name":"3-cover.jpg","query":"?shot=cover&photos=cruiser,harbor,rooftop,rooftop&title=MIDNIGHT%20CRUISER&sub=Vice%20Poster%20Original&size=portrait&layout=hero-strip&grade=neon","w":1080},{"h":1080,"name":"4-cover.jpg","query":"?shot=cover&photos=harbor,cruiser,rooftop,pier,boulevard&title=ROOFTOP%20HUSTLE&sub=EST.%20NEON%20HARBOR&size=square&layout=nine-patch&grade=dusk","w":1080}]
+[
+  { "name": "1-cover.jpg", "query": "?shot=cover&photo=pier&caption=Sunset%20Heist", "w": 1080, "h": 1080 },
+  { "name": "2-editor.jpg", "query": "?shot=editor&photo=boulevard&caption=Boulevard%20Queen", "w": 1280, "h": 720 },
+  { "name": "3-cover.jpg", "query": "?shot=cover&photo=boulevard&caption=Boulevard%20Queen", "w": 1080, "h": 1080 }
+]

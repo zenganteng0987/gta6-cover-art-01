@@ -1,37 +1,45 @@
-// The gta6-cover-art-01 entry (Node 22, standard library only): the app is this directory's app/ folder, plain
-// static files a desktop browser loads offline (app/index.html and its ES modules, no library and no network
-// request), and the program hands it in. It copies app/ and screenshots/ from beside this file to /output and writes
-// /output/dossier.json, the summary the judge reads, with the vendored make.fun library. The app is Vice Poster:
-// a person's own photos fill the panels of a GTA-style multi-panel poster (Vice Grid, Hero Strip or Nine Patch),
-// each photo cropped and positioned inside its panel, graded Sunset / Neon / Dusk / Gold Hour, captioned in bold
-// condensed lettering set from a bundled SIL OFL font, and exported as a PNG at 1080 x 1080, 1080 x 1350 or
-// 1920 x 1080. The design is original — no Rockstar logo, artwork or font — and the sample photos under
-// app/samples/ are free to use: three drawn scenes made for this entry and the kit's two image-model photos.
+// Vice Poster, the gta6-cover-art-01 entry program (Node 22+, standard
+// library only). It hands the entry in: it copies this repository's app/
+// (the offline cover maker) and screenshots/ (its four screenshots) into the
+// output directory, then writes output/dossier.json with buildDossier from
+// the vendored make.fun library, which is the summary the judge reads.
 //
-// Serve it locally with `node serve.ts`, then open http://localhost:8080.
-// Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
+// The grader runs this program twice in a fresh container with a read-only
+// copy of the repository and a writable /output; outside the grader,
+// MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// Serve the app itself with `node serve.ts`, then open http://localhost:8080.
 
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-app.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
-const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+// The repository root is the directory this file lives in.
+const repoRoot = fileURLToPath(new URL('.', import.meta.url));
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-mkdirSync(out, { recursive: true });
-cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
-mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+// Both halves of the entry must be present before anything is copied.
+for (const needed of ['app', 'screenshots']) {
+  if (!existsSync(join(repoRoot, needed))) {
+    throw new Error(`cannot hand in the entry: ${needed}/ is missing from the repository`);
+  }
+}
 
-// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
-// scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in app/ or 48 MiB of app
-// files, in all, or a path under app/ over 1000 bytes: app/ counts beside /output's own 1000-entry cap, its
-// screenshots/ and dossier.json).
+mkdirSync(outDir, { recursive: true });
+cpSync(join(repoRoot, 'app'), join(outDir, 'app'), { recursive: true });
+mkdirSync(join(outDir, 'screenshots'), { recursive: true });
+cpSync(join(repoRoot, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
+
+// The scorer's own caps (reference/gate.json): only text_max_bytes shapes the
+// dossier's bytes; the other limits refuse an entry the scorer would refuse
+// (more than 4 screenshots or one over 256 KiB; more than 993 files in app/
+// or 48 MiB of app files in all, or a path under app/ over 1000 bytes: app/
+// counts beside /output's own 1000-entry cap, its screenshots/ and dossier.json).
+const dossierPath = join(outDir, 'dossier.json');
 writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, {
+  dossierPath,
+  buildDossier(outDir, {
     text_max_bytes: 163840,
     screenshots: { max: 4, max_bytes: 262144 },
     app_max_files: 993,
@@ -40,11 +48,13 @@ writeFileSync(
   }),
 );
 
-// Say what was handed in, so a local run shows the entry's shape at a glance:
-// the screenshots and the dossier's own counts.
-const dossier = JSON.parse(readFileSync(join(out, 'dossier.json'), 'utf8'));
-const shotNames = existsSync(join(out, 'screenshots')) ? readdirSync(join(out, 'screenshots')).sort() : [];
-console.log(
-  `Vice Poster handed in: ${dossier.images.length} screenshots (${shotNames.join(', ')}), ` +
-  `${dossier.text.length} dossier text bytes, written to ${out}.`,
-);
+console.log(`wrote ${dossierPath} (${statSync(dossierPath).size} bytes)`);
+
+// A handed-in entry is only useful if the dossier really landed: refuse to
+// report success when it is missing or empty, so a silent write failure can
+// never pass as a finished build.
+const dossierSize = statSync(dossierPath).size;
+if (dossierSize === 0) {
+  throw new Error(`dossier written but empty: ${dossierPath}`);
+}
+console.log(`entry handed in: app/ + screenshots/ + dossier.json (${dossierSize} bytes)`);
